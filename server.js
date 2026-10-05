@@ -9,7 +9,7 @@ const PORT = 3000;
 
 app.set('trust proxy', true);
 
-const LOG_FILE_PATH = path.join(__dirname, 'log.log');
+const LOG_FILE_PATH = path.join(__dirname, 'log/log.log');
 
 const writeLog = (clientIp, targetUrl, status) => {
   const utcTimestamp = new Date().toISOString();
