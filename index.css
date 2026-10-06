@@ -1,11 +1,11 @@
 .headbar {
-    background-color: rgb(255, 238, 217);
+    background-color: #ffffcc;
     padding: 30px 40px;
     border-radius: 12px;
 }
 h1 {
     margin-top: 0;
     font-size: 24px;
-    color: #333;
+    color: #333333;
     text-align: left;
 }
