@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
 
-const LOG_FILE_PATH = path.join(__dirname, 'log/log.log');
+const LOG_FILE_PATH = path.join(__dirname, '../log/log.log');
 
 const writeLog = (clientIp, targetUrl, status) => {
     const utcTimestamp = new Date().toISOString();
@@ -11,7 +11,7 @@ const writeLog = (clientIp, targetUrl, status) => {
     fs.appendFile(LOG_FILE_PATH, logMessage, () => {});
 };
 
-app.get('/fetch', async (req, res) => {
+const handleProxyRequest = async (req, res, port) => {
     const targetUrl = req.query.url;
     const rawIp = req.ip || req.socket.remoteAddress || '';
     const clientIp = rawIp.replace(/^.*:/, '') || 'Unknown';
@@ -36,7 +36,7 @@ app.get('/fetch', async (req, res) => {
         const contentType = response.headers['content-type'] || '';
         res.status(response.status);
 
-        const proxyBase = `http://localhost:${PORT}/fetch`;
+        const proxyBase = `http://localhost:${port}/fetch`;
 
         // 1. HTMLの場合の処理
         if (contentType.includes('text/html')) {
@@ -100,4 +100,5 @@ app.get('/fetch', async (req, res) => {
         writeLog(clientIp, targetUrl, 500);
         res.status(500).send('プロキシ処理中にエラーが発生しました。');
     }
-});
+};
+module.exports = { handleProxyRequest };
