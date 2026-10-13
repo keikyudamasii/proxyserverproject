@@ -3,22 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Proxy Server</title>
-    <link rel="stylesheet" href="proxy.css">
+    <title>YouTubeDownloader</title>
+    <link rel="stylesheet" href="youtubedownloader.css">
 </head>
+
 <body>
-    <div class="card">
-        <h1>Web Proxy</h1>
-        <form action="/fetch" method="GET" class="form-group">
-            <input 
-                type="text" 
-                name="url" 
-                placeholder="https://example.com" 
-                required
-            >
-            <button type="submit">閲覧する</button>
-        </form>
-    </div>
+    <nav class="tab-bar">
+        <div class="tab-title">
+            <h1>YouTubeダウンローダー</h1> 
+        </div>
+        <div class="tab-links">
+            <a href="../index/index.html">ホーム</a>
+            <a href="../proxy/proxy.html">プロキシサーバー</a>
+        </div>
+    </nav>
+
+    <main>
+        <div class="card">
+            <h1>Web Proxy</h1>
+            <form action="/fetch" method="GET" class="form-group">
+                <input 
+                    type="text" 
+                    name="url" 
+                    placeholder="https://example.com" 
+                    required
+                >
+                <button type="submit">閲覧する</button>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; keikyudamasii All Rights Reserved.</p>
+    </footer>
+
     <script src="proxy.js"></script>
 </body>
 </html>

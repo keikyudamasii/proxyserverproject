@@ -6,19 +6,36 @@
     <title>YouTubeDownloader</title>
     <link rel="stylesheet" href="youtubedownloader.css">
 </head>
+
 <body>
-    <div class="card">
-        <h1>YouTubeDownloader</h1>
-        <form action="/fetch" method="GET" class="form-group">
-            <input 
-                type="text" 
-                name="url" 
-                placeholder="https://www.youtube.com/watch?v=abcdef" 
-                required
-            >
-            <button type="submit">ダウンロードする</button>
-        </form>
-    </div>
+    <nav class="tab-bar">
+        <div class="tab-title">
+            <h1>YouTubeダウンローダー</h1> 
+        </div>
+        <div class="tab-links">
+            <a href="../index/index.html">ホーム</a>
+            <a href="../proxy/proxy.html">プロキシサーバー</a>
+        </div>
+    </nav>
+
+    <main>
+        <div class="card">
+            <form action="/fetch" method="GET" class="form-group">
+                <input 
+                    type="text" 
+                    name="url" 
+                    placeholder="https://www.youtube.com/watch?v=abcdef" 
+                    required
+                >
+                <button type="submit">ダウンロードする</button>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; keikyudamasii All Rights Reserved.</p>
+    </footer>
+
     <script src="youtubedownloader.js"></script>
 </body>
 </html>
