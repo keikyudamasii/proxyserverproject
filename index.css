@@ -1,11 +1,109 @@
-.headbar {
-    background-color: #ffffcc;
-    padding: 30px 40px;
-    border-radius: 12px;
+h1, h2, h3 {
+    text-align: center;
+    user-select: none;
 }
-h1 {
-    margin-top: 0;
-    font-size: 24px;
-    color: #333333;
-    text-align: left;
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    background-color: #000000;
+    color: #ffffff;
+}
+
+main {
+    flex: 1;
+}
+
+.tab-bar {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #000000;
+    height: 80px;
+    padding: 0 32px;
+    overflow: hidden;
+    box-shadow: 0 0 40px #00000020;
+    backdrop-filter: blur(8px);
+    border-bottom: 2px solid transparent;
+    transition: height 0.4s ease, box-shadow 0.4s ease;
+}
+
+.tab-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tab-title h1 {
+    margin: 0;
+    color: #ffffff;
+}
+
+.tab-links {
+    display: flex;
+    gap: 24px;
+}
+
+.tab-bar:hover {
+    height: 90px;
+    box-shadow: 0 0 60px #00000050;
+}
+
+.tab-bar::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.15), transparent);
+    pointer-events: none;
+}
+
+.tab-bar a {
+    position: relative;
+    color: #fff;
+    text-decoration: none;
+    padding: 0 24px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+    background: none;
+    border: none;
+    box-shadow: none;
+    transition: color 0.3s ease;
+    user-select: none;
+}
+
+.tab-bar a::after {
+    content: "";
+    position: absolute;
+    bottom: -8px;
+    left: 0;
+    height: 2px;
+    width: 0%;
+    background: #00ffff;
+    transition: width 0.5s ease;
+    border-radius: 1px;
+}
+
+.tab-bar a:hover::after {
+    width: 100%;
+}
+
+footer {
+    background-color: #111111;
+    color: #ffffff;
+    text-align: center;
+    user-select: none;
+    padding: 0px 0;
+    width: 100%;
 }
