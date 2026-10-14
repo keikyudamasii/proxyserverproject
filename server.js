@@ -7,7 +7,7 @@ const PORT = 3000;
 app.set('trust proxy', true);
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'index/index.html'));
 });
 
 app.get('/fetch', async (req, res) => {
