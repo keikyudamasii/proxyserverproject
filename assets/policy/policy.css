@@ -1,0 +1,95 @@
+h1, h2, h3, p {
+    text-align: center;
+    user-select: none;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow-x: hidden;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    background-color: #000000;
+    color: #ffffff;
+}
+
+main {
+    flex: 1;
+}
+
+.tab-bar {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #000000;
+    height: 80px;
+    padding: 0 32px;
+    overflow: hidden;
+    box-shadow: 0 0 40px #00ffff30;
+    backdrop-filter: blur(8px);
+    border-bottom: 2px solid transparent;
+    transition: height 0.4s ease, box-shadow 0.4s ease;
+}
+
+.tab-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tab-title h1 {
+    margin: 0;
+    color: #ffffff;
+}
+
+.tab-bar:hover {
+    height: 90px;
+    box-shadow: 0 0 60px #ff000050;
+}
+
+.tab-bar::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+    background: linear-gradient(to right, transparent, #ff000020, transparent);
+    pointer-events: none;
+}
+
+.title {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    font-weight: 900;
+    white-space: nowrap;
+    transform-origin: center center;
+    animation: gather 1.5s cubic-bezier(.7, 0, .84, 0) both;
+}
+
+.assept {
+    background-color: #222222;
+    text-align: center;
+    padding: 0px 0;
+    width: 100%;
+}
+
+.button {
+    margin-block-start: 1em;
+    margin-block-end: 1em;
+}
+
+footer {
+    background-color: #111111;
+    color: #ffffff;
+    text-align: center;
+    padding: 0px 0;
+    width: 100%;
+}
