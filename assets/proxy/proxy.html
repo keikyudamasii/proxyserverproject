@@ -17,15 +17,19 @@
         </div>
     </nav>
     <main>
+        <div class="notice">
+            <p>&#x1F6C8; ただいまこのサービスは停止させていただいております。大変申し訳ございません。</p>
+        </div>
         <div class="card">
             <form action="/fetch" method="GET" class="form-group">
-                <input 
-                    type="text" 
-                    name="url" 
-                    placeholder="https://example.com" 
+                <input
+                    type="text"
+                    name="url"
+                    placeholder="https://example.com"
                     required
+                    disabled
                 >
-                <button type="submit">閲覧する</button>
+                <button type="submit" disabled>閲覧する</button>
             </form>
         </div>
     </main>

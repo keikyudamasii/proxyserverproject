@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
-const { handleProxyRequest } = require('./proxy-handler');
+// プロキシサービスは一時停止中のため読み込みも停止中(再開時はコメントアウトを外す)
+// const { handleProxyRequest } = require('./assets/proxy/proxy-handler');
 const app = express();
 const PORT = 3000;
 
@@ -15,9 +16,10 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'assets/index/index.html'));
 });
 
-app.get('/fetch', async (req, res) => {
-    await handleProxyRequest(req, res, PORT);
-});
+// プロキシサービスは一時停止中のため /fetch API を無効化(再開時はコメントアウトを外す)
+// app.get('/fetch', async (req, res) => {
+//     await handleProxyRequest(req, res, PORT);
+// });
 
 app.listen(PORT, () => {
     console.log(`Proxy server running on http://localhost:${PORT}`);
