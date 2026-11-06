@@ -18,16 +18,18 @@
     </nav>
     <main>
         <div class="card">
-            <form action="/fetch" method="GET" class="form-group">
-                <input 
-                    type="text" 
-                    name="url" 
-                    placeholder="https://www.youtube.com/watch?v=abcdef" 
+            <form id="download-form" class="form-group">
+                <input
+                    type="text"
+                    id="url-input"
+                    name="url"
+                    placeholder="https://www.youtube.com/watch?v=abcdef"
                     required
                 >
-                <button type="submit">ダウンロードする</button>
+                <button type="submit" id="download-button">ダウンロードする</button>
             </form>
         </div>
+        <div id="console" class="console" hidden></div>
     </main>
     <footer>
         <p>&copy; keikyudamasii All Rights Reserved.</p>

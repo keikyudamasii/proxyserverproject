@@ -143,6 +143,33 @@ button:hover {
     background-color: #0052a3;
 }
 
+/* ターミナル風の進捗ログ */
+.console {
+    margin: 20px auto 0;
+    width: calc(100% - 32px);
+    max-width: 480px;
+    box-sizing: border-box;
+    background-color: #111111;
+    border: 2px solid #00ff8840;
+    border-radius: 12px;
+    padding: 16px;
+    height: 220px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #00ff88;
+    text-align: left;
+}
+
+.console div {
+    word-break: break-all;
+}
+
+.console .error {
+    color: #ff6666;
+}
+
 footer {
     background-color: #111111;
     color: #ffffff;
