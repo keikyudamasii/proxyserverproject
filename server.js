@@ -7,6 +7,7 @@ const PORT = 3000;
 app.use(express.static(path.join(__dirname, 'assets/index')));
 app.use(express.static(path.join(__dirname, 'assets/proxy')));
 app.use(express.static(path.join(__dirname, 'assets/youtubedownloader')));
+app.use(express.static(path.join(__dirname, 'assets/policy')));
 
 app.set('trust proxy', true);
 

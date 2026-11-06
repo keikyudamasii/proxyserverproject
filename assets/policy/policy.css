@@ -74,7 +74,7 @@ main {
     animation: gather 1.5s cubic-bezier(.7, 0, .84, 0) both;
 }
 
-.assept {
+.accept {
     background-color: #222222;
     text-align: center;
     padding: 0px 0;
