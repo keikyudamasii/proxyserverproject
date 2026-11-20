@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const readline = require('readline');
+const { writeLog, getClientIp } = require('./logger');
 // プロキシサービスは一時停止中のため読み込みも停止中(再開時はコメントアウトを外す)
 // const { handleProxyRequest } = require('./assets/proxy/proxy-handler');
 
@@ -19,6 +20,30 @@ app.use(express.static(path.join(__dirname, 'assets/youtubedownloader')));
 app.use(express.static(path.join(__dirname, 'assets/policy')));
 
 app.set('trust proxy', true);
+
+// 全リクエストのアクセスログ(どのデバイスがいつどのページへ来たか)。/log/ 宛の送信自体は二重記録になるため除外
+app.use((req, res, next) => {
+    if (req.path.startsWith('/log/')) return next();
+    res.on('finish', () => {
+        writeLog('access', {
+            ip: getClientIp(req),
+            url: req.originalUrl,
+            referrer: req.get('Referer') || undefined,
+            status: res.statusCode
+        });
+    });
+    next();
+});
+
+// policy「了解した」ボタンから送られる同意の記録
+app.post('/log/policy-accept', (req, res) => {
+    writeLog('policy-accept', {
+        ip: getClientIp(req),
+        url: '/policy.html',
+        status: 200
+    });
+    res.sendStatus(200);
+});
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'assets/index/index.html'));
@@ -42,6 +67,7 @@ app.get('/download', (req, res) => {
         if (!fs.existsSync(filepath)) {
             return res.status(404).send('エラー: ファイルが見つかりません。');
         }
+        writeLog('download-file', { ip: getClientIp(req), file: file, status: 200 });
         return res.download(filepath, path.basename(filepath));
     }
 
@@ -60,6 +86,8 @@ app.get('/download', (req, res) => {
     });
     res.write('data: [server] ダウンロードを開始します...\n\n');
 
+    writeLog('download-start', { ip: getClientIp(req), url: url });
+
     const proc = spawn('python', [YOUTUBE_DOWNLOADER, url, DOWNLOADS_DIR]);
 
     readline.createInterface({ input: proc.stdout }).on('line', (line) => {
@@ -70,6 +98,11 @@ app.get('/download', (req, res) => {
     proc.stderr.on('data', (chunk) => { stderr += chunk; });
 
     proc.on('close', (code) => {
+        writeLog('download-end', {
+            ip: getClientIp(req),
+            url: url,
+            note: code === 0 ? 'exit code 0 (成功)' : `exit code ${code} (異常終了)`
+        });
         // python側がJSONでエラーを通知している場合はスクリプトが処理するので、文字通りの異常終了だけ補足する
         if (code !== 0 && stderr.trim()) {
             const lastLine = stderr.trim().split('\n').pop();

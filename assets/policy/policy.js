@@ -7,9 +7,11 @@ const saveConsent = () => {
     document.cookie = `${CONSENT_COOKIE_NAME}=accepted; expires=${expires}; path=/`;
 };
 
-// 「了解した」ボタン: 同意を保存してトップページへ戻る
+// 「了解した」ボタン: 同意をサーバーログに送信してトップページへ戻る
 const acceptPolicy = () => {
     saveConsent();
+    // keepalive指定でページ遷移後もリクエストが確実に届く
+    fetch('/log/policy-accept', { method: 'POST', keepalive: true });
     location.href = '/';
 };
 

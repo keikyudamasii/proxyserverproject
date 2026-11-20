@@ -1,23 +1,13 @@
 const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
 const cheerio = require('cheerio');
-
-const LOG_FILE_PATH = path.join(__dirname, '..', '..', 'log', 'log.log');
-
-const writeLog = (clientIp, targetUrl, status) => {
-    const utcTimestamp = new Date().toISOString();
-    const logMessage = `[${utcTimestamp}] IP: ${clientIp} | Requested URL: ${targetUrl || 'N/A'} | Status: ${status}\n`;
-    fs.appendFile(LOG_FILE_PATH, logMessage, () => {});
-};
+const { writeLog, getClientIp } = require('../../logger');
 
 const handleProxyRequest = async (req, res, port) => {
     const targetUrl = req.query.url;
-    const rawIp = req.ip || req.socket.remoteAddress || '';
-    const clientIp = rawIp.replace(/^.*:/, '') || 'Unknown';
+    const clientIp = getClientIp(req);
 
     if (!targetUrl) {
-        writeLog(clientIp, targetUrl, 400);
+        writeLog('proxy', { ip: clientIp, url: targetUrl, status: 400, note: 'urlパラメーターなし' });
         return res.status(400).send('エラー: クエリパラメーター "url" を指定してください。');
     }
 
@@ -31,7 +21,7 @@ const handleProxyRequest = async (req, res, port) => {
             }
         });
 
-        writeLog(clientIp, targetUrl, response.status);
+        writeLog('proxy', { ip: clientIp, url: targetUrl, status: response.status });
 
         const contentType = response.headers['content-type'] || '';
         res.status(response.status);
@@ -97,7 +87,7 @@ const handleProxyRequest = async (req, res, port) => {
 
     } catch (error) {
         console.error('Proxy Error:', error.message);
-        writeLog(clientIp, targetUrl, 500);
+        writeLog('proxy-error', { ip: clientIp, url: targetUrl, status: 500, note: error.message });
         res.status(500).send('プロキシ処理中にエラーが発生しました。');
     }
 };
