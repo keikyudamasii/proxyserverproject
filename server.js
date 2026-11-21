@@ -66,6 +66,23 @@ app.use((req, res, next) => {
     next();
 });
 
+// 公開してよい拡張子だけを静的配信する
+// (.py / .exe / .dll / .txt など、サーバー側のファイルは404にする)
+const PUBLIC_EXTENSIONS = new Set([
+    '.html', '.css', '.js',
+    '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico',
+    '.woff', '.woff2', '.ttf'
+]);
+app.use((req, res, next) => {
+    // エンコード(%2Epy など)で拡張子チェックを回避されないようデコードしてから判定する
+    let pathname = req.path;
+    try { pathname = decodeURIComponent(pathname); } catch (e) {}
+    const ext = path.extname(pathname).toLowerCase();
+    // 拡張子なし(/ や /download など)は各ルートで処理する
+    if (!ext || PUBLIC_EXTENSIONS.has(ext)) return next();
+    return res.status(404).send('Not Found');
+});
+
 // 静的ファイル配信(ログ処理の後に登録する)
 app.use(express.static(path.join(__dirname, 'assets/index')));
 app.use(express.static(path.join(__dirname, 'assets/proxy')));
