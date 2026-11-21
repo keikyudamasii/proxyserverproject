@@ -1,6 +1,6 @@
 /node_modules
 /downloads
 /log
+/Ignored_files
 package-lock.json
 package.json
-git prefix.html
