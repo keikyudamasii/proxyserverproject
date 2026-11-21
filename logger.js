@@ -2,6 +2,9 @@ const fs = require('fs');
 const path = require('path');
 
 const LOG_DIR = path.join(__dirname, 'log');
+// プライバシーポリシーの「3週間保管」に合わせる
+const LOG_RETENTION_DAYS = 21;
+const DATE_LOG_PATTERN = /^(\d{4})-(\d{2})-(\d{2})\.log$/;
 
 // ローカル日付を YYYY-MM-DD 形式で返す(日付ごとのログファイル名に使う)
 const formatDate = (date) => {
@@ -46,4 +49,27 @@ const writeLog = (event, fields = {}) => {
     console.log(line);
 };
 
-module.exports = { writeLog, getClientIp, getLogFilePath };
+// 保管期間(21日)を過ぎた日付ログを削除する
+const cleanupOldLogs = () => {
+    let names;
+    try {
+        names = fs.readdirSync(LOG_DIR);
+    } catch (e) {
+        return; // ログフォルダが無ければ何もしない
+    }
+    const cutoff = Date.now() - LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+    for (const name of names) {
+        const match = DATE_LOG_PATTERN.exec(name);
+        if (!match) continue;
+        // ファイル名の日付(ローカル時刻の0時)が保管期間より古ければ削除
+        const fileDate = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+        if (Number.isNaN(fileDate.getTime())) continue;
+        if (fileDate.getTime() < cutoff) {
+            try {
+                fs.unlinkSync(path.join(LOG_DIR, name));
+            } catch (e) {}
+        }
+    }
+};
+
+module.exports = { writeLog, getClientIp, getLogFilePath, cleanupOldLogs, LOG_RETENTION_DAYS };

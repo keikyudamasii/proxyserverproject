@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const readline = require('readline');
-const { writeLog, getClientIp } = require('./logger');
+const { writeLog, getClientIp, cleanupOldLogs } = require('./logger');
 // プロキシサービスは一時停止中のため読み込みも停止中(再開時はコメントアウトを外す)
 // const { handleProxyRequest } = require('./assets/proxy/proxy-handler');
 
@@ -40,6 +40,11 @@ const cleanupOldDownloads = () => {
     } catch (e) {}
 };
 cleanupOldDownloads();
+
+// プライバシーポリシーの保管期間(21日)を過ぎたログを削除する
+cleanupOldLogs();
+// 起動しっぱなしでも古いログが残らないよう、1日1回チェックする
+setInterval(cleanupOldLogs, 24 * 60 * 60 * 1000);
 
 // HTMLページの遷移だけをアクセスログに残す(CSS/JS/画像や/download等のAPIは除外)
 // staticより前に登録しないと、staticが応答してログ処理まで届かない
