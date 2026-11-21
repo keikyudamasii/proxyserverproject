@@ -1,5 +1,6 @@
 /node_modules
 /downloads
+/log
 package-lock.json
 package.json
 git prefix.html
