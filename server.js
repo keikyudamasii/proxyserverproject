@@ -21,11 +21,6 @@ const PYTHON_BIN = process.env.PYTHON_BIN || (process.platform === 'win32' ? 'py
 // 中断されたダウンロードの残骸を起動時に掃除する閾値(6時間)
 const CLEANUP_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 
-app.use(express.static(path.join(__dirname, 'assets/index')));
-app.use(express.static(path.join(__dirname, 'assets/proxy')));
-app.use(express.static(path.join(__dirname, 'assets/youtubedownloader')));
-app.use(express.static(path.join(__dirname, 'assets/policy')));
-
 app.set('trust proxy', true);
 
 // 起動時に前回の残骸(ブラウザ切断などで配信されなかったファイル)を掃除する
@@ -46,9 +41,15 @@ const cleanupOldDownloads = () => {
 };
 cleanupOldDownloads();
 
-// 全リクエストのアクセスログ(どのデバイスがいつどのページへ来たか)。/log/ 宛の送信自体は二重記録になるため除外
+// HTMLページの遷移だけをアクセスログに残す(CSS/JS/画像や/download等のAPIは除外)
+// staticより前に登録しないと、staticが応答してログ処理まで届かない
+const isHtmlPageRequest = (req) => {
+    if (req.method !== 'GET') return false;
+    return req.path === '/' || req.path.endsWith('.html');
+};
+
 app.use((req, res, next) => {
-    if (req.path.startsWith('/log/')) return next();
+    if (!isHtmlPageRequest(req)) return next();
     res.on('finish', () => {
         writeLog('access', {
             ip: getClientIp(req),
@@ -59,6 +60,12 @@ app.use((req, res, next) => {
     });
     next();
 });
+
+// 静的ファイル配信(ログ処理の後に登録する)
+app.use(express.static(path.join(__dirname, 'assets/index')));
+app.use(express.static(path.join(__dirname, 'assets/proxy')));
+app.use(express.static(path.join(__dirname, 'assets/youtubedownloader')));
+app.use(express.static(path.join(__dirname, 'assets/policy')));
 
 // policy「了解した」ボタンから送られる同意の記録
 app.post('/log/policy-accept', (req, res) => {
