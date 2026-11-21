@@ -2,5 +2,6 @@
 /downloads
 /log
 /Ignored_files
-package-lock.json
-package.json
+/.pydeps
+__pycache__/
+*.pyc
