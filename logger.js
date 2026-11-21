@@ -2,7 +2,17 @@ const fs = require('fs');
 const path = require('path');
 
 const LOG_DIR = path.join(__dirname, 'log');
-const LOG_FILE_PATH = path.join(LOG_DIR, 'log.log');
+
+// ローカル日付を YYYY-MM-DD 形式で返す(日付ごとのログファイル名に使う)
+const formatDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+// その日のログファイルパス(例: log/2026-11-21.log)。日付が変われば自動で切り替わる
+const getLogFilePath = (date = new Date()) => path.join(LOG_DIR, `${formatDate(date)}.log`);
 
 // リクエスト送信元のIPを取得する(::ffff: 表記を取り除く)
 const getClientIp = (req) => {
@@ -24,14 +34,16 @@ const formatLog = (event, fields) => {
     return parts[0] + ' ' + parts.slice(1).join(' | ');
 };
 
-// log/log.log に追記する(Render等のコンソールにも同じ行を出力する)
+// 「その日の日付.log」に追記する(ファイルが無ければ作成する)
+// あわせてコンソール(Render等のログ)にも同じ行を出力する
 const writeLog = (event, fields = {}) => {
     const line = formatLog(event, fields);
     try {
         fs.mkdirSync(LOG_DIR, { recursive: true });
-        fs.appendFile(LOG_FILE_PATH, line + '\n', () => {});
+        // flag: 'a' はファイルが無ければ作成する
+        fs.appendFile(getLogFilePath(), line + '\n', { flag: 'a' }, () => {});
     } catch (e) {}
     console.log(line);
 };
 
-module.exports = { writeLog, getClientIp, LOG_FILE_PATH };
+module.exports = { writeLog, getClientIp, getLogFilePath };
