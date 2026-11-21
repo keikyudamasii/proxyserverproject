@@ -2,7 +2,7 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const { writeLog, getClientIp } = require('../../logger');
 
-const handleProxyRequest = async (req, res, port) => {
+const handleProxyRequest = async (req, res) => {
     const targetUrl = req.query.url;
     const clientIp = getClientIp(req);
 
@@ -26,7 +26,8 @@ const handleProxyRequest = async (req, res, port) => {
         const contentType = response.headers['content-type'] || '';
         res.status(response.status);
 
-        const proxyBase = `http://localhost:${port}/fetch`;
+        // ホスト名を含めない相対パスにする(ローカルでもRender等でも同じURLで動く)
+        const proxyBase = '/fetch';
 
         // 1. HTMLの場合の処理
         if (contentType.includes('text/html')) {

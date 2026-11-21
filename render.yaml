@@ -1,0 +1,16 @@
+# Render Blueprint (https://render.com/docs/blueprint-spec)
+# Nodeランタイム上でPython(yt-dlp)も使う構成。ffmpegとpython3-pipはRenderのネイティブ環境に同梱されている
+services:
+  - type: web
+    name: proxyserverproject
+    runtime: node
+    plan: free
+    buildCommand: npm install && python3 -m pip install --break-system-packages --target .pydeps -r requirements.txt
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      # コード側は汎用名(PORT / PYTHON_BIN / FFMPEG_PATH)しか見ないため、他環境へ移行しやすい
+      - key: NODE_VERSION
+        value: 22.11.0
+      - key: PYTHON_BIN
+        value: python3

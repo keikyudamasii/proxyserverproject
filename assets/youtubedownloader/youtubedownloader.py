@@ -12,6 +12,20 @@ import yt_dlp
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FFMPEG_DIR = os.path.join(BASE_DIR, "ffmpeg")
 
+# ffmpeg の場所はOSで切り替える:
+#   Windows  -> 同梱の ffmpeg フォルダ(ローカル実行・将来のWindows公開向け)
+#   Linux等  -> システムの ffmpeg をyt-dlpに自動検出させる(None)
+# FFMPEG_PATH を指定すればそちらを優先する
+if os.name == "nt" and os.path.isdir(FFMPEG_DIR):
+    FFMPEG_LOCATION = FFMPEG_DIR
+else:
+    FFMPEG_LOCATION = os.environ.get("FFMPEG_PATH") or None
+
+# Windowsでパイプ出力がcp932になるとNode.js側(UTF-8)で文字化けするため、常にUTF-8で出力する
+for stream in (sys.stdout, sys.stderr):
+    if hasattr(stream, "reconfigure"):
+        stream.reconfigure(encoding="utf-8")
+
 MEDIA_EXTENSIONS = (".mp4", ".mkv", ".webm", ".m4a", ".mp3")
 
 
@@ -78,17 +92,29 @@ def main():
         # タイトルで保存するが、同名ファイルの衝突は yt-dlp が自動で採番する
         "outtmpl": os.path.join(out_dir, "%(title)s.%(ext)s"),
         "nocheckcertificate": True,
-        "ffmpeg_location": FFMPEG_DIR,
         "quiet": True,
         "no_warnings": True,
         "progress_hooks": [progress_hook],
     }
+
+    # ffmpegの場所が決まっている場合のみ明示する(Linux等はPATHから自動検出)
+    if FFMPEG_LOCATION:
+        ydl_opts["ffmpeg_location"] = FFMPEG_LOCATION
+
+    # YouTubeのボット判定対策: cookiesファイルを環境変数で渡せるようにする
+    cookie_file = os.environ.get("YTDLP_COOKIES")
+    if cookie_file and os.path.isfile(cookie_file):
+        ydl_opts["cookiefile"] = cookie_file
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
     except yt_dlp.utils.DownloadError as error:
         emit_status("error", message=str(error))
+        sys.exit(1)
+    except Exception as error:
+        # 予期しない例外でもブラウザ側が待ち続けないようJSONで通知する
+        emit_status("error", message=f"{type(error).__name__}: {error}")
         sys.exit(1)
 
     # 完了判定: 保存先で最も新しいメディアファイルを結果として通知する

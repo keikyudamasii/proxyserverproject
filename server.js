@@ -10,9 +10,16 @@ const { writeLog, getClientIp } = require('./logger');
 const DOWNLOADS_DIR = path.join(__dirname, 'downloads');
 const YOUTUBE_URL_PATTERN = /^https?:\/\/(www\.|music\.)?(youtube\.com|youtu\.be)\//;
 const YOUTUBE_DOWNLOADER = path.join(__dirname, 'assets', 'youtubedownloader', 'youtubedownloader.py');
+// pip --target で入れたPythonパッケージ(yt-dlp等)の置き場。無くても害はない
+const PYDEPS_DIR = path.join(__dirname, '.pydeps');
 
 const app = express();
-const PORT = 3000;
+// PaaS(Render等)はPORTを環境変数で指定する。未指定ならローカル用の3000番
+const PORT = Number(process.env.PORT) || 3000;
+// Pythonの実行ファイル名: Windowsは python、Linux(Render等)は python3 が一般的
+const PYTHON_BIN = process.env.PYTHON_BIN || (process.platform === 'win32' ? 'python' : 'python3');
+// 中断されたダウンロードの残骸を起動時に掃除する閾値(6時間)
+const CLEANUP_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 
 app.use(express.static(path.join(__dirname, 'assets/index')));
 app.use(express.static(path.join(__dirname, 'assets/proxy')));
@@ -20,6 +27,24 @@ app.use(express.static(path.join(__dirname, 'assets/youtubedownloader')));
 app.use(express.static(path.join(__dirname, 'assets/policy')));
 
 app.set('trust proxy', true);
+
+// 起動時に前回の残骸(ブラウザ切断などで配信されなかったファイル)を掃除する
+const cleanupOldDownloads = () => {
+    try {
+        if (!fs.existsSync(DOWNLOADS_DIR)) return;
+        const now = Date.now();
+        for (const name of fs.readdirSync(DOWNLOADS_DIR)) {
+            const filepath = path.join(DOWNLOADS_DIR, name);
+            try {
+                const stat = fs.statSync(filepath);
+                if (stat.isFile() && now - stat.mtimeMs > CLEANUP_MAX_AGE_MS) {
+                    fs.unlinkSync(filepath);
+                }
+            } catch (e) {}
+        }
+    } catch (e) {}
+};
+cleanupOldDownloads();
 
 // 全リクエストのアクセスログ(どのデバイスがいつどのページへ来たか)。/log/ 宛の送信自体は二重記録になるため除外
 app.use((req, res, next) => {
@@ -51,7 +76,7 @@ app.get('/', (req, res) => {
 
 // プロキシサービスは一時停止中のため /fetch API を無効化(再開時はコメントアウトを外す)
 // app.get('/fetch', async (req, res) => {
-//     await handleProxyRequest(req, res, PORT);
+//     await handleProxyRequest(req, res);
 // });
 
 // YouTubeダウンローダー(yt-dlp): ?url= はSSEで進捗配信、?file= は完成ファイルの配信
@@ -68,7 +93,10 @@ app.get('/download', (req, res) => {
             return res.status(404).send('エラー: ファイルが見つかりません。');
         }
         writeLog('download-file', { ip: getClientIp(req), file: file, status: 200 });
-        return res.download(filepath, path.basename(filepath));
+        // 配信が完了したら削除する(サーバーのディスクを圧迫しないため)
+        return res.download(filepath, path.basename(filepath), (err) => {
+            if (!err) fs.unlink(filepath, () => {});
+        });
     }
 
     // ?url= : Python(yt-dlp)を起動し、標準出力を1行ずつ実況配信する
@@ -88,33 +116,71 @@ app.get('/download', (req, res) => {
 
     writeLog('download-start', { ip: getClientIp(req), url: url });
 
-    const proc = spawn('python', [YOUTUBE_DOWNLOADER, url, DOWNLOADS_DIR]);
+    // 接続が閉じているか(正常終了・クライアント切断の両方)
+    const isClosed = () => res.writableEnded || res.destroyed;
+
+    // プロキシ側のアイドルタイムアウト対策。SSEのコメント行なのでクライアントには表示されない
+    const heartbeat = setInterval(() => {
+        if (!isClosed()) res.write(': ping\n\n');
+    }, 15000);
+
+    let finished = false;
+    const finish = () => {
+        if (finished) return;
+        finished = true;
+        clearInterval(heartbeat);
+        if (!res.writableEnded) res.end();
+    };
+
+    // pip --target で入れたパッケージをPythonが見つけられるよう、絶対パスでPYTHONPATHに追加する
+    const proc = spawn(PYTHON_BIN, [YOUTUBE_DOWNLOADER, url, DOWNLOADS_DIR], {
+        env: {
+            ...process.env,
+            PYTHONPATH: [PYDEPS_DIR, process.env.PYTHONPATH].filter(Boolean).join(path.delimiter)
+        }
+    });
+
+    // Pythonが見つからない等でプロセスを起動できなかった場合(未処理だとサーバーごと落ちる)
+    let spawnFailed = false;
+    proc.on('error', (error) => {
+        spawnFailed = true;
+        writeLog('download-error', { ip: getClientIp(req), url: url, note: error.message });
+        if (!isClosed()) {
+            res.write(`data: ${JSON.stringify({ status: 'error', message: `実行環境のエラー: ${error.message}` })}\n\n`);
+        }
+        finish();
+    });
 
     readline.createInterface({ input: proc.stdout }).on('line', (line) => {
-        if (line.length) res.write(`data: ${line}\n\n`);
+        if (line.length && !isClosed()) res.write(`data: ${line}\n\n`);
     });
 
     let stderr = '';
     proc.stderr.on('data', (chunk) => { stderr += chunk; });
 
     proc.on('close', (code) => {
+        if (spawnFailed) return; // 'error' 側で処理済み
         writeLog('download-end', {
             ip: getClientIp(req),
             url: url,
             note: code === 0 ? 'exit code 0 (成功)' : `exit code ${code} (異常終了)`
         });
         // python側がJSONでエラーを通知している場合はスクリプトが処理するので、文字通りの異常終了だけ補足する
-        if (code !== 0 && stderr.trim()) {
+        if (code !== 0 && stderr.trim() && !isClosed()) {
             const lastLine = stderr.trim().split('\n').pop();
             res.write(`data: [python] ${lastLine}\n\n`);
         }
-        res.end();
+        finish();
     });
 
-    // クライアントが切断したらpythonを停止する
-    req.on('close', () => proc.kill());
+    // クライアントが切断したらpythonを停止する(resのcloseは切断時に発火する)
+    res.on('close', () => {
+        clearInterval(heartbeat);
+        if (!finished) proc.kill();
+    });
 });
 
-app.listen(PORT, () => {
-    console.log(`Proxy server running on http://localhost:${PORT}`);
+// 0.0.0.0 で待ち受ける(コンテナ/PaaSから外部アクセスできるようにする)
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Proxy server running on port ${PORT}`);
 });
