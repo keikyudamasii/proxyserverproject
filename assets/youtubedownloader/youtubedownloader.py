@@ -88,6 +88,10 @@ def main():
 
     os.makedirs(out_dir, exist_ok=True)
 
+    # どのバージョンで動いているか分かるようにしておく(不具合切り分け用)
+    version = getattr(getattr(yt_dlp, "version", None), "__version__", "unknown")
+    emit(f"[yt-dlp] version {version}")
+
     ydl_opts = {
         # タイトルで保存するが、同名ファイルの衝突は yt-dlp が自動で採番する
         "outtmpl": os.path.join(out_dir, "%(title)s.%(ext)s"),
@@ -95,6 +99,9 @@ def main():
         "quiet": True,
         "no_warnings": True,
         "progress_hooks": [progress_hook],
+        # YouTubeのJSチャレンジをNode.jsで解く(DenoはRenderに入っていないため)
+        # yt-dlp[default] に含まれる yt-dlp-ejs が実際の解読スクリプト
+        "js_runtimes": {"node": {}},
     }
 
     # ffmpegの場所が決まっている場合のみ明示する(Linux等はPATHから自動検出)

@@ -1,3 +1,4 @@
 # YouTubeダウンローダー用のPythonパッケージ
 # YouTube側の仕様変更に追従するため、あえてバージョンは固定しない
-yt-dlp
+# [default] を付けると、YouTubeのJSチャレンジを解く yt-dlp-ejs も一緒に入る
+yt-dlp[default]
