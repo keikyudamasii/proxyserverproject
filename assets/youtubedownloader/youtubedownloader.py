@@ -62,6 +62,17 @@ def emit_env_info():
     except PackageNotFoundError:
         emit("[env] yt-dlp-ejs: NOT FOUND")
 
+    # どの対策が有効になっているか分かるようにする(値そのものは出さない)
+    emit(f"[env] force_ipv4: {'off' if os.environ.get('YTDLP_FORCE_IPV4') == '0' else 'on'}")
+    emit(f"[env] player_client: {os.environ.get('YTDLP_PLAYER_CLIENT') or '(default)'}")
+    emit(f"[env] proxy: {'set' if os.environ.get('YTDLP_PROXY') else '(none)'}")
+    cookie_file = os.environ.get("YTDLP_COOKIES")
+    if cookie_file:
+        state = "found" if os.path.isfile(cookie_file) else "NOT FOUND"
+        emit(f"[env] cookies: {state} ({cookie_file})")
+    else:
+        emit("[env] cookies: (none)")
+
 
 class YdlLogger:
     """yt-dlp の全出力(debug/info/warning/error)をブラウザ(SSE)へ流すロガー。
