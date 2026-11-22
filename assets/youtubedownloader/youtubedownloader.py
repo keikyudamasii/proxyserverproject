@@ -63,6 +63,38 @@ def emit_env_info():
         emit("[env] yt-dlp-ejs: NOT FOUND")
 
 
+class YdlLogger:
+    """yt-dlp の全出力(debug/info/warning/error)をブラウザ(SSE)へ流すロガー。
+
+    既定のロガーは stdout/stderr に直接書くため、Node.js 側で取りこぼすことがある。
+    デバッグ時(YTDLP_DEBUG が 0 以外)だけこれを使い、1行ずつ接頭辞付きで出力する。
+    """
+
+    @staticmethod
+    def _emit(prefix, message):
+        # 複数行のメッセージもSSE(改行区切り)が壊れないよう1行ずつに分ける
+        for line in str(message).splitlines():
+            emit(f"{prefix} {line}")
+
+    def debug(self, message, **_kwargs):
+        self._emit("[yt-dlp]", message)
+
+    def info(self, message, **_kwargs):
+        self._emit("[yt-dlp]", message)
+
+    def warning(self, message, **_kwargs):
+        self._emit("[yt-dlp:warn]", message)
+
+    def error(self, message, **_kwargs):
+        self._emit("[yt-dlp:error]", message)
+
+    def stdout(self, message, **_kwargs):
+        self._emit("[yt-dlp]", message)
+
+    def stderr(self, message, **_kwargs):
+        self._emit("[yt-dlp:stderr]", message)
+
+
 def human_bytes(size):
     if size is None:
         return "unknown"
@@ -111,8 +143,9 @@ def main():
     emit(f"[yt-dlp] version {version}")
     emit_env_info()
 
-    # YTDLP_DEBUG=1 を設定すると yt-dlp の詳細ログをブラウザに表示する(切り分け用)
-    verbose = os.environ.get("YTDLP_DEBUG") == "1"
+    # yt-dlp の詳細ログをブラウザに表示する(切り分け用)。
+    # 調査のため既定でON。通常運用に戻すときは環境変数 YTDLP_DEBUG=0 を設定する
+    verbose = os.environ.get("YTDLP_DEBUG", "1") != "0"
 
     if not re.search(r"(youtube\.com|youtu\.be)", url):
         emit_status("error", message="YouTubeのURLのみダウンロードできます。")
@@ -127,11 +160,18 @@ def main():
         "quiet": not verbose,
         "no_warnings": not verbose,
         "verbose": verbose,
+        # 進捗は progress_hooks 側で整形して出すので、yt-dlp自身の進捗表示は止める
+        "noprogress": True,
         "progress_hooks": [progress_hook],
         # YouTubeのJSチャレンジをNode.jsで解く(DenoはRenderに入っていないため)
         # yt-dlp[default] に含まれる yt-dlp-ejs が実際の解読スクリプト
         "js_runtimes": {"node": {}},
     }
+
+    # デバッグ時は yt-dlp の出力を1行も落とさずブラウザへ流す
+    # (どのクライアントが・なぜ失敗したのかが verbose ログにしか出ないため)
+    if verbose:
+        ydl_opts["logger"] = YdlLogger()
 
     # ffmpegの場所が決まっている場合のみ明示する(Linux等はPATHから自動検出)
     if FFMPEG_LOCATION:

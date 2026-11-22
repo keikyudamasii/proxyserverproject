@@ -143,6 +143,28 @@ button:hover {
     background-color: #0052a3;
 }
 
+/* ログのコピーボタン(出力があるときだけ表示) */
+.console-toolbar {
+    width: calc(100% - 32px);
+    max-width: 480px;
+    margin: 20px auto -10px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.console-toolbar[hidden] {
+    display: none;
+}
+
+.console-toolbar.debug {
+    max-width: 900px;
+}
+
+.console-toolbar button {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
 /* ターミナル風の進捗ログ */
 .console {
     margin: 20px auto 0;
@@ -164,6 +186,12 @@ button:hover {
 
 .console div {
     word-break: break-all;
+}
+
+/* デバッグ時は全出力を読みやすいよう広げる */
+.console.debug {
+    height: 60vh;
+    max-width: 900px;
 }
 
 .console .error {

@@ -20,6 +20,9 @@ const PORT = Number(process.env.PORT) || 3000;
 const PYTHON_BIN = process.env.PYTHON_BIN || (process.platform === 'win32' ? 'python' : 'python3');
 // 中断されたダウンロードの残骸を起動時に掃除する閾値(6時間)
 const CLEANUP_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+// yt-dlp の詳細ログ(stderr含む)をすべてブラウザへ流す。
+// 調査のため既定でON。通常運用に戻すときは環境変数 YTDLP_DEBUG=0 を設定する
+const DEBUG_MODE = process.env.YTDLP_DEBUG !== '0';
 
 app.set('trust proxy', true);
 
@@ -142,6 +145,10 @@ app.get('/download', (req, res) => {
         'Connection': 'keep-alive'
     });
     res.write('data: [server] ダウンロードを開始します...\n\n');
+    // デバッグ時はブラウザ側に「全行を残す」よう指示する(通常は200行で古い行を捨てる)
+    if (DEBUG_MODE) {
+        res.write(`data: ${JSON.stringify({ status: 'debug', message: 'デバッグモード: yt-dlpの全出力を表示します' })}\n\n`);
+    }
 
     writeLog('download-start', { ip: getClientIp(req), url: url });
 
@@ -184,8 +191,14 @@ app.get('/download', (req, res) => {
         if (line.length && !isClosed()) res.write(`data: ${line}\n\n`);
     });
 
-    let stderr = '';
-    proc.stderr.on('data', (chunk) => { stderr += chunk; });
+    // stderr には警告・エラーが出力される。デバッグ時は1行ずつそのままブラウザへ流す
+    const stderrLines = [];
+    readline.createInterface({ input: proc.stderr }).on('line', (line) => {
+        stderrLines.push(line);
+        if (DEBUG_MODE && line.length && !isClosed()) {
+            res.write(`data: [stderr] ${line}\n\n`);
+        }
+    });
 
     proc.on('close', (code) => {
         if (spawnFailed) return; // 'error' 側で処理済み
@@ -195,9 +208,9 @@ app.get('/download', (req, res) => {
             note: code === 0 ? 'exit code 0 (成功)' : `exit code ${code} (異常終了)`
         });
         // python側がJSONでエラーを通知している場合はスクリプトが処理するので、文字通りの異常終了だけ補足する
-        if (code !== 0 && stderr.trim() && !isClosed()) {
-            const lastLine = stderr.trim().split('\n').pop();
-            res.write(`data: [python] ${lastLine}\n\n`);
+        // (デバッグ時はstderrを全行流しているので二重表示しない)
+        if (code !== 0 && !DEBUG_MODE && stderrLines.length && !isClosed()) {
+            res.write(`data: [python] ${stderrLines[stderrLines.length - 1]}\n\n`);
         }
         finish();
     });
