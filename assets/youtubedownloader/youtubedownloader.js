@@ -108,7 +108,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 finishDownload(output.filename);
             } else if (output.status === 'error') {
                 eventSource.close();
-                writeLog(`[error] ${output.message}`, 'error');
+                // ヒント文が続く場合は改行ごとに表示する
+                for (const line of String(output.message).split('\n')) {
+                    writeLog(`[error] ${line}`, 'error');
+                }
                 resetForm();
             }
         };

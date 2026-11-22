@@ -70,11 +70,19 @@ class YdlLogger:
     デバッグ時(YTDLP_DEBUG が 0 以外)だけこれを使い、1行ずつ接頭辞付きで出力する。
     """
 
+    def __init__(self):
+        # 429/403 が出たか(IPブロックのヒントを出すため)
+        self.blocked = False
+
     @staticmethod
     def _emit(prefix, message):
         # 複数行のメッセージもSSE(改行区切り)が壊れないよう1行ずつに分ける
         for line in str(message).splitlines():
             emit(f"{prefix} {line}")
+
+    def _note_blocked(self, message):
+        if "HTTP Error 429" in message or "HTTP Error 403" in message:
+            self.blocked = True
 
     def debug(self, message, **_kwargs):
         self._emit("[yt-dlp]", message)
@@ -83,9 +91,11 @@ class YdlLogger:
         self._emit("[yt-dlp]", message)
 
     def warning(self, message, **_kwargs):
+        self._note_blocked(str(message))
         self._emit("[yt-dlp:warn]", message)
 
     def error(self, message, **_kwargs):
+        self._note_blocked(str(message))
         self._emit("[yt-dlp:error]", message)
 
     def stdout(self, message, **_kwargs):
@@ -170,8 +180,28 @@ def main():
 
     # デバッグ時は yt-dlp の出力を1行も落とさずブラウザへ流す
     # (どのクライアントが・なぜ失敗したのかが verbose ログにしか出ないため)
-    if verbose:
-        ydl_opts["logger"] = YdlLogger()
+    logger = YdlLogger() if verbose else None
+    if logger:
+        ydl_opts["logger"] = logger
+
+    # データセンターIPではIPv6がブロックされやすいので、既定でIPv4を強制する
+    # (YTDLP_FORCE_IPV4=0 で無効化)
+    if os.environ.get("YTDLP_FORCE_IPV4", "1") != "0":
+        ydl_opts["source_address"] = "0.0.0.0"
+
+    # YouTube側のクライアントを差し替えて試せるようにする
+    # 例: YTDLP_PLAYER_CLIENT=android_vr,web_embedded,tv
+    player_client = os.environ.get("YTDLP_PLAYER_CLIENT", "").strip()
+    if player_client:
+        ydl_opts.setdefault("extractor_args", {})["youtube"] = {
+            "player_client": [c.strip() for c in player_client.split(",") if c.strip()]
+        }
+
+    # 住宅用プロキシ等を経由させたい場合に指定する
+    # 例: YTDLP_PROXY=http://user:pass@host:port
+    proxy = os.environ.get("YTDLP_PROXY", "").strip()
+    if proxy:
+        ydl_opts["proxy"] = proxy
 
     # ffmpegの場所が決まっている場合のみ明示する(Linux等はPATHから自動検出)
     if FFMPEG_LOCATION:
@@ -186,7 +216,14 @@ def main():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
     except yt_dlp.utils.DownloadError as error:
-        emit_status("error", message=str(error))
+        message = str(error)
+        # 429/403 はYouTubeによるIPブロック。対処方法を添えて案内する
+        if logger and logger.blocked:
+            message += (
+                "\nヒント: YouTubeがこのサーバーのIPをブロックしています(429/403)。"
+                "時間をおく、YTDLP_COOKIES、YTDLP_PROXY、YTDLP_PLAYER_CLIENT を順に試してください。"
+            )
+        emit_status("error", message=message)
         sys.exit(1)
     except Exception as error:
         # 予期しない例外でもブラウザ側が待ち続けないようJSONで通知する
