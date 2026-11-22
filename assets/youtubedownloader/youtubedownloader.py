@@ -3,6 +3,10 @@ import os
 import glob
 import json
 import re
+import shutil
+import subprocess
+from importlib.metadata import PackageNotFoundError, version as package_version
+
 import yt_dlp
 
 # 使い方: python youtubedownloader.py <YouTube URL> <保存先フォルダ>
@@ -37,6 +41,26 @@ def emit(message):
 def emit_status(status, **payload):
     # 最終状態はJSON行で通知する ( {"status": "done"/"error", ...} )
     print(json.dumps({"status": status, **payload}, ensure_ascii=False), flush=True)
+
+
+def emit_env_info():
+    # 不具合切り分け用: yt-dlp が使うJSランタイムと、解読スクリプト(ejs)の有無を表示する
+    node_path = shutil.which("node")
+    if node_path:
+        try:
+            node_version = subprocess.run(
+                [node_path, "--version"], capture_output=True, text=True, timeout=5
+            ).stdout.strip()
+        except Exception:
+            node_version = "unknown"
+        emit(f"[env] node: {node_version or 'unknown'} ({node_path})")
+    else:
+        emit("[env] node: NOT FOUND")
+
+    try:
+        emit(f"[env] yt-dlp-ejs: {package_version('yt-dlp-ejs')}")
+    except PackageNotFoundError:
+        emit("[env] yt-dlp-ejs: NOT FOUND")
 
 
 def human_bytes(size):
@@ -82,22 +106,27 @@ def main():
     url = sys.argv[1]
     out_dir = sys.argv[2]
 
+    # どのバージョンで動いているか分かるようにしておく(不具合切り分け用)
+    version = getattr(getattr(yt_dlp, "version", None), "__version__", "unknown")
+    emit(f"[yt-dlp] version {version}")
+    emit_env_info()
+
+    # YTDLP_DEBUG=1 を設定すると yt-dlp の詳細ログをブラウザに表示する(切り分け用)
+    verbose = os.environ.get("YTDLP_DEBUG") == "1"
+
     if not re.search(r"(youtube\.com|youtu\.be)", url):
         emit_status("error", message="YouTubeのURLのみダウンロードできます。")
         sys.exit(1)
 
     os.makedirs(out_dir, exist_ok=True)
 
-    # どのバージョンで動いているか分かるようにしておく(不具合切り分け用)
-    version = getattr(getattr(yt_dlp, "version", None), "__version__", "unknown")
-    emit(f"[yt-dlp] version {version}")
-
     ydl_opts = {
         # タイトルで保存するが、同名ファイルの衝突は yt-dlp が自動で採番する
         "outtmpl": os.path.join(out_dir, "%(title)s.%(ext)s"),
         "nocheckcertificate": True,
-        "quiet": True,
-        "no_warnings": True,
+        "quiet": not verbose,
+        "no_warnings": not verbose,
+        "verbose": verbose,
         "progress_hooks": [progress_hook],
         # YouTubeのJSチャレンジをNode.jsで解く(DenoはRenderに入っていないため)
         # yt-dlp[default] に含まれる yt-dlp-ejs が実際の解読スクリプト
